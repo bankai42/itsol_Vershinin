@@ -5,13 +5,13 @@ from django.http import HttpResponse
 
 # Create your views here.
 
-def create_running_str_video():
+def create_running_str_video(text):
     # Параметры видео
     video_width = 100
     video_height = 100
     fps = 30
     duration = 3  # Длительность видео в секундах
-    text = "Хочу на стажировку :)"  # Текст для отображения
+    #text = "Хочу на стажировку :)"  # Текст для отображения
 
     # Создание видео
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -52,7 +52,8 @@ def create_running_str_video():
     video.release()
 
 def video_view(request):
-    create_running_str_video()
+    text = request.GET.get('text', 'Running Text Sample')
+    create_running_str_video(text)
 
     with open('./tmp/output.avi', 'rb') as f:
         response = HttpResponse(f.read(), content_type='video/x-msvideo')
