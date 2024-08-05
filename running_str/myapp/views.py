@@ -1,7 +1,10 @@
 import cv2
+import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 from django.http import HttpResponse
+import tempfile
+from .models import VideoRequest
 
 # Create your views here.
 
@@ -13,9 +16,14 @@ def create_running_str_video(text):
     duration = 3  # Длительность видео в секундах
     #text = "Хочу на стажировку :)"  # Текст для отображения
 
+    temp_file = tempfile.NamedTemporaryFile(suffix='.avi', delete=False)
+    video_path = temp_file.name
+    temp_file.close()
+
+
     # Создание видео
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    video = cv2.VideoWriter('./tmp/output.avi', fourcc, fps, (video_width, video_height))
+    video = cv2.VideoWriter(video_path, fourcc, fps, (video_width, video_height))
 
     # Загрузка шрифта
     font_size = 40
@@ -50,13 +58,27 @@ def create_running_str_video(text):
 
     # Освобождаем ресурсы
     video.release()
+    
+    return video_path
+
 
 def video_view(request):
     text = request.GET.get('text', 'Running Text Sample')
-    create_running_str_video(text)
+    #create_running_str_video(text)
 
-    with open('./tmp/output.avi', 'rb') as f:
+    video_path = create_running_str_video(text)
+
+    # Сохранение данных в базе данных
+    video_request = VideoRequest(text=text)
+    video_request.video_file.save(os.path.basename(video_path), open(video_path, 'rb'))
+    video_request.save()
+
+    # Открытие видеофайла и возврат в HTTP-ответе
+    with open(video_path, 'rb') as f:
         response = HttpResponse(f.read(), content_type='video/x-msvideo')
-        response['Content-Disposition'] = 'attachment; filename="output.avi"'
-        return response
+        response['Content-Disposition'] = f'attachment; filename="{video_path}.avi"'
+
+    # Удаляем временный файл
+    os.remove(video_path)
+    return response
     
